@@ -37,11 +37,7 @@ public class CoverageDiff {
 	private final File classesDirectory;
 	private final File sourceDirectory;
 	private final File reportDirectory;
-	private File executionDataFile;
 	private static CommandLine line;
-
-	private ExecutionDataStore executionDataStore;
-	private SessionInfoStore sessionInfoStore;
 
 	private Map<String, Map<String, ArrayList<Coverage>>> packageCoverage;
 	private Coverage[] totalCoverage;
@@ -100,17 +96,10 @@ public class CoverageDiff {
 		CoverageDiff s = new CoverageDiff(new File(getOptionValue("source")), 
 										  new File(getOptionValue("report"))/*, 
 										   args.length - EXEC_DATA_INDEX*/);
-	    IBundleCoverage bundleCoverage;
-	    	    
-	    // Analyze the individual test suits coverage
 	    
 	    String[] execDataFiles = getOptionValues("exec", ",");
 		List<IBundleCoverage> bcl = s.loadAndAnalyze(execDataFiles);
-	    
-		// Merge the execution files and analyze the coverage
-		s.mergeExecDataFiles();
-		bundleCoverage = s.loadAndAnalyze(new File("./target/jacoco.exec"));		
-		bcl.add(bundleCoverage);
+
 		
 		s.calculateBranchCoverage(bcl);
 		
@@ -121,6 +110,11 @@ public class CoverageDiff {
 		
 		s.director.generateClassCoverageReport(bcl);
 		
+	}
+
+	private List<IBundleCoverage> loadAndAnalyze(String... files) throws IOException {
+		CoverageAnalyzer analyzer = new CoverageAnalyzer(this.classesDirectory);
+		return analyzer.compare(new File(files[0]), new File(files[1]));
 	}
 	
 
@@ -344,86 +338,6 @@ public class CoverageDiff {
 		
 		return coverage;
 	}
-
-
-	/*
-	 * Runs Maven to merge the input exec data files
-	 */
-	private void mergeExecDataFiles() throws IOException {
-		
-		System.out.println("merge exec files");
-		Process p = Runtime.getRuntime().exec("mvn jacoco:merge");
-	    
-		try {
-			p.waitFor();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
-		}
-	}
-		
-	private IBundleCoverage analyzeStructure() throws IOException {
-		final CoverageBuilder coverageBuilder = new CoverageBuilder();
-		final Analyzer analyzer = new Analyzer(executionDataStore,
-				coverageBuilder);
-
-		analyzer.analyzeAll(classesDirectory);
-
-		return coverageBuilder.getBundle(title);
-	}
-	
-	private void loadExecutionData() throws IOException {
-		
-		final FileInputStream fis = new FileInputStream(executionDataFile);
-		final ExecutionDataReader executionDataReader = new ExecutionDataReader(
-				fis);
-		executionDataStore = new ExecutionDataStore();
-		sessionInfoStore = new SessionInfoStore();
-
-		executionDataReader.setExecutionDataVisitor(executionDataStore);
-		executionDataReader.setSessionInfoVisitor(sessionInfoStore);
-
-		while (executionDataReader.read()) {
-		}
-
-		fis.close();
-	}
-	
-	private List<IBundleCoverage> loadAndAnalyze(String[] execDataFiles) throws IOException {
-		
-		List<IBundleCoverage> bcl = new ArrayList<>();
-		IBundleCoverage bundleCoverage;
-	    File source, dest;
-	    
-	    Files.createDirectories(Paths.get("./target/jacoco-execs"));
-	    
-	    for (int i = 0; i < execDataFiles.length; i++) {		
-			
-	    	//Copy the execution data files locally to prepare them for merge
-	    	source = new File(execDataFiles[i]);
-	    	dest = new File("./target/jacoco-execs/" + "part_" + i + ".exec"); 			
-			Files.copy(source.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-			
-			//Load and analyze the execution data
-			bundleCoverage = loadAndAnalyze(source);	
-			
-			bcl.add(bundleCoverage);
-		}
-	    
-	    return bcl;
-	}
-	
-	private IBundleCoverage loadAndAnalyze(File execDataFile) throws IOException {
-		System.out.println("load and analyze: " + execDataFile.getPath());
-		executionDataFile = execDataFile;
-		loadExecutionData();
-		return analyzeStructure();		
-		
-	}
-
-
-	 int getNumberOfTestSuites() {
-		return numberOfTestSuites;
-	}
 	 
 	private boolean isDifferent(String className, ArrayList<Coverage> coverage) {
 
@@ -448,22 +362,6 @@ public class CoverageDiff {
 	}
 
 
-}
-
-class Coverage {
-    
-	int covered;
-    int total;
-    
-    public Coverage() {
-    	covered = 0;
-    	total = 0;
-    }
-	
-	public Coverage(int covered, int total) {
-		this.covered = covered;
-		this.total = total;
-	}
 }
 
 
