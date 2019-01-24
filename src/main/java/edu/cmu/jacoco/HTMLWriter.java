@@ -5,11 +5,12 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 //import edu.cmu.jacoco.CoverageDiff.Coverage;
 
-public class HTMLWriter implements Writer {
+public class HTMLWriter {
 	
 	File file;
 	BufferedWriter bw;
@@ -25,7 +26,7 @@ public class HTMLWriter implements Writer {
 		bw = new BufferedWriter(fw);
 	}
 
-	@Override
+
 	public void renderHeader(String[] testSuiteTitles) {
 		try {
 			bw.write("<table width='100%' border='1' cellspacing='0'>");
@@ -43,7 +44,7 @@ public class HTMLWriter implements Writer {
 
 	}
 	
-	@Override
+
 	public void renderFooter() {
 		try {
 			bw.write("</table>");
@@ -53,15 +54,15 @@ public class HTMLWriter implements Writer {
 		}
 	}
 
-	@Override
-	public void renderTotalCoverage(Coverage[] totalCoverage, String[] testSuiteTitles) {		
+
+	public void renderTotalCoverage(List<CoverageCalculator.CoverageInfo> totalCoverage, String[] testSuiteTitles) {
 		
 		renderHeader(testSuiteTitles);
 		
-		renderClassHeader("", CoverageDiff.TOTAL_LABEL, false);
+		renderClassHeader("", "Total Branch Coverage", false);
 		
-		for (Coverage c : totalCoverage) {
-			renderTestSuitCoverage(c, new HashMap<String, String>() {{put("bgcolor", "C3FAF9");}});
+		for (CoverageCalculator.CoverageInfo coverageInfo : totalCoverage) {
+			renderTestSuitCoverage(coverageInfo, new HashMap<String, String>() {{put("bgcolor", "C3FAF9");}});
 		}
 		
 		renderClassFooter();	
@@ -69,7 +70,7 @@ public class HTMLWriter implements Writer {
 		renderFooter();
 	}
 
-	@Override
+
 	public void renderPackageHeader(String title, String[] testSuiteTitles) {
 		String s;
 		
@@ -90,7 +91,7 @@ public class HTMLWriter implements Writer {
 		}
 	}
 	
-	@Override
+
 	public void renderPackageFooter() {
 
 		try {
@@ -101,7 +102,7 @@ public class HTMLWriter implements Writer {
 		}
 	}
 	
-	@Override
+
 	public void renderClassHeader(String packageName, String title, boolean different) {
 				
 		try {
@@ -122,7 +123,7 @@ public class HTMLWriter implements Writer {
 		}
 	}
 	
-	@Override
+
 	public void renderClassFooter() {
 		try {
 			bw.write("</tr>");
@@ -131,14 +132,14 @@ public class HTMLWriter implements Writer {
 			e.printStackTrace();
 		}
 	}
-	@Override
-	public void renderTestSuitCoverage(Coverage c, Map<String, String> options) {
+
+	public void renderTestSuitCoverage(CoverageCalculator.CoverageInfo c, Map<String, String> options) {
 		
 		String s = String.format("<td> %-5d of %-5d </td> <td bgcolor='#%s'> %-7.0f </td> ",
-								c.covered,
-								c.total,
+								c.getCoveredBranches(),
+								c.getTotalBranches(),
 								options.get("bgcolor"),
-								c.total > 0 ? c.covered * 100 / c.total : 0.0);
+								c.getTotalBranches() > 0 ? c.getCoveredBranches() * 100 / c.getTotalBranches() : 0.0);
 		try {
 			bw.write(s);
 		} catch (IOException e) {
@@ -148,7 +149,7 @@ public class HTMLWriter implements Writer {
 		
 	}
 	
-	@Override
+
 	public void renderReportEnd() {
 		try {
 			bw.close();

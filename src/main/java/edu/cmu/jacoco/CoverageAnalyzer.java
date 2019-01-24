@@ -8,10 +8,7 @@ import org.jacoco.core.tools.ExecFileLoader;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
-import java.util.stream.Collectors;
 
 class CoverageAnalyzer {
 
@@ -21,14 +18,8 @@ class CoverageAnalyzer {
         this.classesPath = classesPath;
     }
 
-    List<IBundleCoverage> compare(File firstExecutionFile, File secondExecutionFile) throws IOException {
-        List<ExecutionDataStore> executionDataStores = new ArrayList<>(3);
-
-        executionDataStores.add(getExecutionDataStore(firstExecutionFile));
-        executionDataStores.add(getExecutionDataStore(secondExecutionFile));
-        executionDataStores.add(getExecutionDataStore(firstExecutionFile, secondExecutionFile));
-
-        return executionDataStores.stream().map(this::analyze).collect(Collectors.toList());
+    IBundleCoverage analyze(File... executionFiles) throws IOException {
+        return analyze(getExecutionDataStore(executionFiles));
     }
 
     private ExecutionDataStore getExecutionDataStore(File... executionFiles) throws IOException {

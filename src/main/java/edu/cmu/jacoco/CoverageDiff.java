@@ -1,66 +1,36 @@
 package edu.cmu.jacoco;
 
+import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
+import org.apache.commons.io.FileUtils;
+import org.jacoco.core.analysis.IBundleCoverage;
+
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
-import org.apache.commons.cli.BasicParser;
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.OptionBuilder;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
-import org.apache.commons.io.FileUtils;
-import org.jacoco.core.analysis.Analyzer;
-import org.jacoco.core.analysis.CoverageBuilder;
-import org.jacoco.core.analysis.IBundleCoverage;
-import org.jacoco.core.analysis.IClassCoverage;
-import org.jacoco.core.analysis.IPackageCoverage;
-import org.jacoco.core.data.ExecutionDataReader;
-import org.jacoco.core.data.ExecutionDataStore;
-import org.jacoco.core.data.SessionInfoStore;
+import static edu.cmu.jacoco.ArgumentsExtractor.*;
 
 public class CoverageDiff {
-	
-	private final String title;
 
-	private File projectDirectory;
 	private final File classesDirectory;
 	private final File sourceDirectory;
 	private final File reportDirectory;
-	private static CommandLine line;
 
-	private Map<String, Map<String, ArrayList<Coverage>>> packageCoverage;
-	private Coverage[] totalCoverage;
-	private Writer writer;
+	private HTMLWriter writer;
 	private CodeDirector director;
 	
 	private static int numberOfTestSuites;
-	
-	final static String TOTAL_LABEL = "Total Branch Coverage";
-	private final static String ALL_PACKAGES = "all";
 
 	public CoverageDiff(final File projectDirectory, File reportDirectory/*, int numberOfTestSuites*/) {
-		this.title = projectDirectory.getName();
-		
-		this.projectDirectory = projectDirectory;
 		this.classesDirectory = new File(projectDirectory, "classes");
 		this.sourceDirectory = new File(projectDirectory, "src");
 		this.reportDirectory = reportDirectory;
 		prepareReportDirectory();
 		
-		this.packageCoverage = new HashMap<>();		
 		numberOfTestSuites = getOptionValues("exec", ",").length;
-		this.totalCoverage = new Coverage[numberOfTestSuites + 1];
 
 		this.director = new CodeDirectorImpl(sourceDirectory, this.reportDirectory, new HTMLHighlighter());
 	}
@@ -81,40 +51,42 @@ public class CoverageDiff {
 	
 	}
 
-	public void setWriter(Writer writer) {
+	public void setWriter(HTMLWriter writer) {
 		this.writer = writer;
 	}
 
 	
 	public static void main(final String[] args) throws IOException {
-		
 
-		//if (!validateArguments(args)) return;
-		
 		if (!extractArguments(args)) return;
 
-		CoverageDiff s = new CoverageDiff(new File(getOptionValue("source")), 
+		CoverageDiff coverageDiff = new CoverageDiff(new File(getOptionValue("source")),
 										  new File(getOptionValue("report"))/*, 
 										   args.length - EXEC_DATA_INDEX*/);
 	    
-	    String[] execDataFiles = getOptionValues("exec", ",");
-		List<IBundleCoverage> bcl = s.loadAndAnalyze(execDataFiles);
+	    String[] files = getOptionValues("exec", ",");
 
-		
-		s.calculateBranchCoverage(bcl);
-		
-		s.setWriter(new HTMLWriter(s.reportDirectory + "/index.html"));
+		final CoverageAnalyzer analyzer = new CoverageAnalyzer(coverageDiff.classesDirectory);
+		final File firstFile = new File(files[0]);
+		final File secondFile = new File(files[1]);
+
+		IBundleCoverage firstCoverage = analyzer.analyze(firstFile);
+		IBundleCoverage secondCoverage = analyzer.analyze(secondFile);
+		IBundleCoverage mergedCoverage = analyzer.analyze(firstFile, secondFile);
+
+		CoverageCalculator calculator = new CoverageCalculator();
+		CoverageInfo firstCoverageInfo = calculator.getInfo(firstCoverage);
+		CoverageInfo secondCoverageInfo = calculator.getInfo(secondCoverage);
+		CoverageInfo mergedCoverageInfo = calculator.getInfo(mergedCoverage);
+
+		coverageDiff.setWriter(new HTMLWriter(coverageDiff.reportDirectory + "/index.html"));
 		
 		String[] testSuiteTitles = wrapTitles(getOptionValues("title", ","));
-		s.renderBranchCoverage(testSuiteTitles, getOptionValues("package", ","));	
+		coverageDiff.renderBranchCoverage(testSuiteTitles,
+				Arrays.asList(firstCoverageInfo, secondCoverageInfo, mergedCoverageInfo));
 		
-		s.director.generateClassCoverageReport(bcl);
+		coverageDiff.director.generateClassCoverageReport(Arrays.asList(firstCoverage, secondCoverage, mergedCoverage));
 		
-	}
-
-	private List<IBundleCoverage> loadAndAnalyze(String... files) throws IOException {
-		CoverageAnalyzer analyzer = new CoverageAnalyzer(this.classesDirectory);
-		return analyzer.compare(new File(files[0]), new File(files[1]));
 	}
 	
 
@@ -136,233 +108,86 @@ public class CoverageDiff {
 		
 	}
 
-	private static boolean extractArguments(String[] args) {
-		CommandLineParser parser = new BasicParser();
-
-		Options options = new Options();
-		boolean valid = true;
-		
-		options.addOption( OptionBuilder.withLongOpt( "source" )
-		        .withDescription( "The directory containing the SOURCE files" )
-		        .hasArg()
-		        .create() );
-		options.addOption( OptionBuilder.withLongOpt( "report" )
-                .withDescription( "The directory that the generated REPORTs will be written to" )
-                .hasArg()
-                .create() );
-		options.addOption( OptionBuilder.withLongOpt( "package" )
-                .withDescription( "The packages that the reports will be genrated for" )
-                .hasArg()
-                .create() );
-
-		options.addOption( OptionBuilder.withLongOpt( "exec" )
-                .withDescription( "The name of the Jacoco execution files" )
-                .hasArg()
-                .create() );
-
-		options.addOption( OptionBuilder.withLongOpt( "title" )
-                .withDescription( "The title of the test suites in the coverage report" )
-                .hasArg()
-                .create() );
-
-		
-		try {
-		    // parse the command line arguments
-			line = parser.parse( options, args );
-		    
-		    if( !line.hasOption( "source" )) {
-		        System.out.println("You need to specify the source directory");
-		        valid = false;
-		    }
-		    
-		    if( !line.hasOption("report")) {
-		        System.out.println( "You need to specify the report directory");
-		        valid = false;
-		    }
-		    
-		    if( !line.hasOption( "exec" ) ) {
-		        System.out.println("You need to specify the name of the exec files.");
-		        valid = false; 
-		    }
-
-		    
+	private Map<String, Set<String>> getClassesWithCoverage(List<CoverageInfo> coverageInfoList) {
+		Map<String, Set<String>> classesWithCoverage = new HashMap<>();
+		for (CoverageInfo fullCoverageInfo: coverageInfoList) {
+			Map<String, CoverageInfo> packagesCoverageInfo = fullCoverageInfo.getChilds();
+			for (String packageName : packagesCoverageInfo.keySet()) {
+				Map<String, CoverageInfo> classesCoverageInfo = packagesCoverageInfo.get(packageName).getChilds();
+				for (String className: classesCoverageInfo.keySet()) {
+					CoverageInfo classCoverageInfo = classesCoverageInfo.get(className);
+					if (classCoverageInfo.getCoveredBranches() > 0) {
+						if (!classesWithCoverage.containsKey(packageName)) {
+							classesWithCoverage.put(packageName, new HashSet<>());
+						}
+						classesWithCoverage.get(packageName).add(className);
+					}
+				}
+			}
 		}
-		catch( ParseException exp ) {
-		    System.out.println( "Unexpected exception:" + exp.getMessage() );
-		    valid = false;
-		}
-		
-		return valid;
-	}
-	
-	private static String getOptionValue(String option) {
-		if (line.hasOption(option)) {
-			return line.getOptionValue(option);
-		}
-		else {
-			return new String();
-		}
+		return classesWithCoverage;
 	}
 
-	private static String[] getOptionValues(String option, String separator) {
-		if (line.hasOption(option)) {
-			return line.getOptionValue(option).split(separator);
-		}
-		else {
-			return new String[0];
-		}
-	}
+	private void renderBranchCoverage(String[] testSuiteTitles, List<CoverageInfo> coverageInfoList) {
+		
+		writer.renderTotalCoverage(coverageInfoList, testSuiteTitles);
 
-	private void renderBranchCoverage(String[] testSuiteTitles, String[] packages) {
+		Map<String, Set<String>> classesWithCoverage = getClassesWithCoverage(coverageInfoList);
 		
-		// Render the total coverage
-		String packageName;
-		boolean all = packages.length == 0;
-		writer.renderTotalCoverage(totalCoverage, testSuiteTitles);
-		
-		for (Map.Entry<String, Map<String, ArrayList<Coverage>>> entry : packageCoverage.entrySet()) {
-		    // Render the package level coverage by passing the package name, and the list of its classes
-			packageName = entry.getKey().replaceAll("/", ".");
-			
-			if (all || Arrays.asList(packages).contains(packageName))				
-				renderPackageBranchCoverage(packageName, entry.getValue(), testSuiteTitles);
+		for (String packageName: classesWithCoverage.keySet()) {
+		    renderPackageBranchCoverage(packageName, classesWithCoverage.get(packageName), coverageInfoList, testSuiteTitles);
 		}
 		
 		writer.renderReportEnd();
 	}
 
-	private void renderPackageBranchCoverage(String packageName, Map<String, ArrayList<Coverage>> classes, String[] testSuiteTitles) {
+	private void renderPackageBranchCoverage(
+			String packageName,
+			Set<String> classesNames,
+			List<CoverageInfo> coverageInfoList,
+			String[] testSuiteTitles
+	) {
 
-		String className;
 		writer.renderPackageHeader(packageName, testSuiteTitles);
-				
-		for (Map.Entry<String, ArrayList<Coverage>> entry : classes.entrySet()) {
-			className = entry.getKey().replaceAll("/", ".");
-			// Do not display the class coverage if the class name is "Total Coverage"	
-			if (!className.equals(TOTAL_LABEL)) {				
-				renderClassBranchCoverage(packageName, className, entry.getValue(), new HashMap<String, String>() {{put("bgcolor", "F7E4E4");}});
-			}
+
+		List<CoverageInfo> packageCoverages = coverageInfoList.stream()
+				.map(info -> getChildCoverageInfo(info, packageName))
+				.collect(Collectors.toList());
+
+		for (String className: classesNames) {
+			List<CoverageInfo> classCoverages = packageCoverages.stream()
+					.map(info -> getChildCoverageInfo(info, className))
+					.collect(Collectors.toList());
+			HashMap<String, String> options = new HashMap<>();
+			options.put("bgcolor", "F7E4E4");
+			renderClassBranchCoverage(packageName, className, classCoverages, options);
 		}
-		
-		// Render the package total branch coverage
-		renderClassBranchCoverage("", TOTAL_LABEL, classes.get(TOTAL_LABEL), new HashMap<String, String>() {{put("bgcolor", "C3FAF9");}});
+
+
+		renderClassBranchCoverage("", "Total Branch Coverage",packageCoverages, new HashMap<String, String>() {{put("bgcolor", "C3FAF9");}});
 		
 		writer.renderPackageFooter();
 	}
 
+	private CoverageInfo getChildCoverageInfo(CoverageInfo coverageInfo, String childName) {
+		Map<String, CoverageInfo> packagesCoverageInfo = coverageInfo.getChilds();
+		if (packagesCoverageInfo.containsKey(childName)) {
+			return packagesCoverageInfo.get(childName);
+		}
 
-	private void renderClassBranchCoverage(String packageName, String className, ArrayList<Coverage> coverageList, HashMap<String, String> options) {
+		return new CoverageInfo();
+	}
+
+
+	private void renderClassBranchCoverage(String packageName, String className, List<CoverageInfo> classCoverages, HashMap<String, String> options) {
 		
-		boolean different = isDifferent(className, coverageList);
+		boolean different = classCoverages.get(0).getCoveredBranches() != classCoverages.get(1).getCoveredBranches();
 		writer.renderClassHeader(packageName, className, different);
 		
-		for (Coverage c : coverageList) {
-			writer.renderTestSuitCoverage(c, options);
+		for (CoverageInfo coverage : classCoverages) {
+			writer.renderTestSuitCoverage(coverage, options);
 		}
 		
 		writer.renderClassFooter();	
 	}
-
-	private void calculateBranchCoverage(List<IBundleCoverage> bcl) {
-		
-		Map<String, ArrayList<Coverage>> classCoverage;
-		
-		// Calculate the total branch coverage for each package and its classes
-		for (IBundleCoverage bc: bcl) {
-			System.out.println("calculate branch coverage " + bc.getName());
-			for (IPackageCoverage p : bc.getPackages()) {	
-				if (packageCoverage.get(p.getName()) != null) {
-					classCoverage = packageCoverage.get(p.getName()); 
-				}
-				else {
-					classCoverage = new HashMap<>();
-				}
-				calculateBranchCoverage(p.getClasses(), classCoverage);	
-				packageCoverage.put(p.getName(), classCoverage);		 
-			 }
-			
-		}
-		
-		// Calculate the total branch coverage for each test suite
-		
-		for (Map.Entry<String, Map<String, ArrayList<Coverage>>> entry : packageCoverage.entrySet()) {
-			classCoverage = entry.getValue();
-			int counter = 0;
-			
-			for (Coverage c : classCoverage.get(TOTAL_LABEL)) {
-				if (totalCoverage[counter] ==  null) {
-					totalCoverage[counter] = new Coverage();
-				}
-				totalCoverage[counter].covered += c.covered;
-				totalCoverage[counter++].total += c.total;
-			}
-		}
-	}
-
-
-	private void calculateBranchCoverage(Collection<IClassCoverage> classes, Map<String, ArrayList<Coverage>> classCoverage) {
-	
-		Coverage coverage;
-		int covered = 0;
-		int total = 0;
-		
-		for (IClassCoverage c : classes) {
-			coverage = calculateBranchCoverage(c);
-			
-			if (classCoverage.get(c.getName()) == null) {
-				classCoverage.put(c.getName(), new ArrayList<Coverage>());
-			}
-			classCoverage.get(c.getName()).add(coverage);
-			
-			covered += coverage.covered;
-			total += coverage.total;
-	
-		}
-	
-		// Calculate the package coverage
-		if (classCoverage.get(TOTAL_LABEL) == null) {
-			classCoverage.put(TOTAL_LABEL, new ArrayList<Coverage>());
-		}
-		
-		classCoverage.get(TOTAL_LABEL).add(new Coverage(covered, total));
-			
-	}
-
-
-	private Coverage calculateBranchCoverage(IClassCoverage c) {
-		
-		Coverage coverage = new Coverage();
-		
-		coverage.covered = c.getBranchCounter().getCoveredCount();
-		coverage.total = c.getBranchCounter().getTotalCount();
-		
-		return coverage;
-	}
-	 
-	private boolean isDifferent(String className, ArrayList<Coverage> coverage) {
-
-		int prev = 0;
-		boolean different = false;
-		
-		if (className.equals(TOTAL_LABEL)) return false;
-		
-		if (coverage != null && coverage.size() > 0) {
-			prev = coverage.get(0).covered;
-		}
-		
-		for (Coverage c : coverage) {
-			if (c.covered != prev) {
-				different = true;
-				break;
-			}
-			
-		} 
-		
-		return different;
-	}
-
-
 }
-
-
-
