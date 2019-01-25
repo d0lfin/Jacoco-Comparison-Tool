@@ -8,6 +8,29 @@ import java.util.*;
 
 class CoverageCalculator {
 
+    private Visitor visitor = (packageName, className, coverageInfo) -> {};
+
+    /**
+     * Return coverage tree
+     *
+     *     coverage info for bundle
+     *     |__ total covered branches in all files
+     *     |__ total branches in all files
+     *     |__ childs (packages coverages)
+     *         |__ package coverage
+     *         |__ ...
+     *         |__ package coverage
+     *             |__ total covered branches of package
+     *             |__ total branches of package
+     *             |__ childs (package classes coverages)
+     *                 |__ class coverage
+     *                 |__ ...
+     *                 |__ class coverage
+     *                     |__ total covered branches of class
+     *                     |__ total branches of class
+     *                     |__ childs (empty)
+     *
+     */
     CoverageInfo getInfo(IBundleCoverage bundleCoverage) {
         Collection<IPackageCoverage> packagesCoverage = bundleCoverage.getPackages();
         CoverageInfo totalCoverageInfo = new CoverageInfo();
@@ -36,11 +59,17 @@ class CoverageCalculator {
 
                 totalCoverageInfo.totalBranches += total;
                 totalCoverageInfo.coveredBranches += covered;
+
+                visitor.visit(packageName, className, classCoverageInfo);
             }
 
         }
 
         return totalCoverageInfo;
+    }
+
+    void setCoverageVisitor(Visitor visitor) {
+        this.visitor = visitor;
     }
 
 
@@ -61,5 +90,9 @@ class CoverageCalculator {
         Map<String, CoverageInfo> getChilds() {
             return Collections.unmodifiableMap(childs);
         }
+    }
+
+    interface Visitor {
+        void visit(String packageName, String className, CoverageInfo coverageInfo);
     }
 }

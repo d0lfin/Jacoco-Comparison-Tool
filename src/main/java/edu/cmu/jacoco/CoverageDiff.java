@@ -74,7 +74,18 @@ public class CoverageDiff {
 		IBundleCoverage secondCoverage = analyzer.analyze(secondFile);
 		IBundleCoverage mergedCoverage = analyzer.analyze(firstFile, secondFile);
 
-		CoverageCalculator calculator = new CoverageCalculator();
+        Map<String, Set<String>> classesWithCoverage = new HashMap<>();
+        CoverageCalculator.Visitor visitor = (packageName, className, coverageInfo) -> {
+            if (coverageInfo.getCoveredBranches() == 0) {
+                return;
+            }
+            if (!classesWithCoverage.containsKey(packageName)) {
+                classesWithCoverage.put(packageName, new HashSet<>());
+            }
+            classesWithCoverage.get(packageName).add(className);
+        };
+        CoverageCalculator calculator = new CoverageCalculator();
+        calculator.setCoverageVisitor(visitor);
 		CoverageInfo firstCoverageInfo = calculator.getInfo(firstCoverage);
 		CoverageInfo secondCoverageInfo = calculator.getInfo(secondCoverage);
 		CoverageInfo mergedCoverageInfo = calculator.getInfo(mergedCoverage);
@@ -83,7 +94,7 @@ public class CoverageDiff {
 		
 		String[] testSuiteTitles = wrapTitles(getOptionValues("title", ","));
 		coverageDiff.renderBranchCoverage(testSuiteTitles,
-				Arrays.asList(firstCoverageInfo, secondCoverageInfo, mergedCoverageInfo));
+				Arrays.asList(firstCoverageInfo, secondCoverageInfo, mergedCoverageInfo), classesWithCoverage);
 		
 		coverageDiff.director.generateClassCoverageReport(Arrays.asList(firstCoverage, secondCoverage, mergedCoverage));
 		
@@ -108,32 +119,12 @@ public class CoverageDiff {
 		
 	}
 
-	private Map<String, Set<String>> getClassesWithCoverage(List<CoverageInfo> coverageInfoList) {
-		Map<String, Set<String>> classesWithCoverage = new HashMap<>();
-		for (CoverageInfo fullCoverageInfo: coverageInfoList) {
-			Map<String, CoverageInfo> packagesCoverageInfo = fullCoverageInfo.getChilds();
-			for (String packageName : packagesCoverageInfo.keySet()) {
-				Map<String, CoverageInfo> classesCoverageInfo = packagesCoverageInfo.get(packageName).getChilds();
-				for (String className: classesCoverageInfo.keySet()) {
-					CoverageInfo classCoverageInfo = classesCoverageInfo.get(className);
-					if (classCoverageInfo.getCoveredBranches() > 0) {
-						if (!classesWithCoverage.containsKey(packageName)) {
-							classesWithCoverage.put(packageName, new HashSet<>());
-						}
-						classesWithCoverage.get(packageName).add(className);
-					}
-				}
-			}
-		}
-		return classesWithCoverage;
-	}
-
-	private void renderBranchCoverage(String[] testSuiteTitles, List<CoverageInfo> coverageInfoList) {
+	private void renderBranchCoverage(String[] testSuiteTitles,
+                                      List<CoverageInfo> coverageInfoList,
+                                      Map<String, Set<String>> classesWithCoverage) {
 		
 		writer.renderTotalCoverage(coverageInfoList, testSuiteTitles);
 
-		Map<String, Set<String>> classesWithCoverage = getClassesWithCoverage(coverageInfoList);
-		
 		for (String packageName: classesWithCoverage.keySet()) {
 		    renderPackageBranchCoverage(packageName, classesWithCoverage.get(packageName), coverageInfoList, testSuiteTitles);
 		}
