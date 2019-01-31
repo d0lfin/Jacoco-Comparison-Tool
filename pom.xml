@@ -47,7 +47,7 @@
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
-                            <mainClass>edu.cmu.jacoco.CoverageDiff</mainClass>
+                            <mainClass>edu.cmu.jacoco.Runner</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
@@ -62,7 +62,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>edu.cmu.jacoco.CoverageDiff</mainClass>
+                            <mainClass>edu.cmu.jacoco.Runner</mainClass>
                         </manifest>
                     </archive>
                 </configuration>

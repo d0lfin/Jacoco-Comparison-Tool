@@ -15,25 +15,29 @@ public class HTMLWriter {
 	File file;
 	BufferedWriter bw;
 	
-	public HTMLWriter(String output) throws IOException {
-		file = new File(output);
-		
-		if (!file.exists()) {
-			file.createNewFile();
+	public HTMLWriter(String output) {
+		try {
+			file = new File(output);
+
+			if (!file.exists()) {
+				file.createNewFile();
+			}
+
+			FileWriter fw = new FileWriter(file.getAbsoluteFile());
+			bw = new BufferedWriter(fw);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
 		}
-		
-		FileWriter fw = new FileWriter(file.getAbsoluteFile());
-		bw = new BufferedWriter(fw);
 	}
 
 
-	public void renderHeader(String[] testSuiteTitles) {
+	public void renderHeader(List<String> testSuiteTitles) {
 		try {
 			bw.write("<table width='100%' border='1' cellspacing='0'>");
 			bw.write("<tr>");
 			
 			String s = String.format("<td>%-50s </td> <td>%20s</td><td> %20s</td><td> %20s</td><td>%-50s </td> <td>%20s</td><td> %20s</td>", 
-					  "", testSuiteTitles[0], testSuiteTitles[0] + "%", testSuiteTitles[1], testSuiteTitles[1] + "%", "Union Coverage", "Union Coverage %");
+					  "", testSuiteTitles.get(0), testSuiteTitles.get(0) + "%", testSuiteTitles.get(1), testSuiteTitles.get(1) + "%", "Union Coverage", "Union Coverage %");
 			bw.write(s);
 			
 			bw.write("</tr>");
@@ -55,7 +59,7 @@ public class HTMLWriter {
 	}
 
 
-	public void renderTotalCoverage(List<CoverageCalculator.CoverageInfo> totalCoverage, String[] testSuiteTitles) {
+	public void renderTotalCoverage(List<CoverageCalculator.CoverageInfo> totalCoverage, List<String> testSuiteTitles) {
 		
 		renderHeader(testSuiteTitles);
 		
@@ -71,7 +75,7 @@ public class HTMLWriter {
 	}
 
 
-	public void renderPackageHeader(String title, String[] testSuiteTitles) {
+	public void renderPackageHeader(String title, List<String> testSuiteTitles) {
 		String s;
 		
 		try {
@@ -82,7 +86,7 @@ public class HTMLWriter {
 			bw.write("<tr>");
 	
 			s = String.format("<td>%-50s </td> <td>%20s</td><td> %20s</td><td> %20s</td><td>%-50s </td> <td>%20s</td><td> %20s</td>", 
-					 		  "Class", testSuiteTitles[0], testSuiteTitles[0] + "%", testSuiteTitles[1], testSuiteTitles[1] + "%", "Union Coverage", "Union Coverage %");
+					 		  "Class", testSuiteTitles.get(0), testSuiteTitles.get(0) + "%", testSuiteTitles.get(1), testSuiteTitles.get(1) + "%", "Union Coverage", "Union Coverage %");
 			bw.write(s);
 			bw.write("</tr>");
 		
