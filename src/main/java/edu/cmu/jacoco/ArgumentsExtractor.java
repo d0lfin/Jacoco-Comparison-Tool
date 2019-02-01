@@ -36,8 +36,8 @@ class ArgumentsExtractor {
         CommandLine line = parser.parse(options, args);
 
         return new Arguments(
-                line.getOptionValue(SOURCES),
-                line.getOptionValue(CLASSES),
+                Arrays.asList(line.getOptionValue(SOURCES).split(",")),
+                Arrays.asList(line.getOptionValue(CLASSES).split(",")),
                 line.getOptionValue(REPORT),
                 Arrays.asList(line.getOptionValue(EXEC).split(",")),
                 Arrays.asList(line.getOptionValue(TITLES).split(","))
@@ -45,13 +45,13 @@ class ArgumentsExtractor {
     }
 
     class Arguments {
-        final String sources;
-        final String classes;
+        final List<String> sources;
+        final List<String> classes;
         final String report;
         final List<String> exec;
         final List<String> titles;
 
-        Arguments(String src, String classes, String report, List<String> exec, List<String> titles) {
+        Arguments(List<String> src, List<String> classes, String report, List<String> exec, List<String> titles) {
             this.sources = src;
             this.classes = classes;
             this.report = report;

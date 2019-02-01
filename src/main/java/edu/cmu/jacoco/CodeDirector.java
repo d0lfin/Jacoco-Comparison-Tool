@@ -1,12 +1,10 @@
 package edu.cmu.jacoco;
 
 import java.io.File;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.jacoco.core.analysis.IBundleCoverage;
 import org.jacoco.core.analysis.IClassCoverage;
@@ -17,13 +15,13 @@ import org.jacoco.core.analysis.IPackageCoverage;
 public class CodeDirector {
 	
 	private HTMLHighlighter writer;
-	private File sourceDirectory;
+	private List<File> sourceDirectories;
 	private File outputDirectory;
 	
-	public CodeDirector(File sourceDirectory, File reportDirectory, HTMLHighlighter htmlHighlighter) {
+	public CodeDirector(List<File> sourceDirectories, File reportDirectory, HTMLHighlighter htmlHighlighter) {
 		this.writer = htmlHighlighter;
 		
-		this.sourceDirectory = sourceDirectory;
+		this.sourceDirectories = sourceDirectories;
 
 		this.outputDirectory = reportDirectory;
 	}
@@ -87,8 +85,12 @@ public class CodeDirector {
 		String toolTip;
 		
 		writer.setClassName(className.replaceAll("/", "."));
-				
-		if (!writer.setSource(new File(this.sourceDirectory, className.replaceFirst("\\$[a-zA-Z_0-9]+", "")))) {
+
+		List<File> sources = sourceDirectories.stream().map(
+				directory -> new File(directory, className.replaceFirst("\\$[a-zA-Z_0-9]+", ""))
+		).collect(Collectors.toList());
+
+		if (!writer.setSources(sources)) {
 			return;
         }
 		writer.setTarget(this.outputDirectory, pkg, className.concat(".html"));		

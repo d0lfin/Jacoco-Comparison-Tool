@@ -19,7 +19,11 @@ public class Runner {
         final File firstFile = new File(arguments.exec.get(0));
         final File secondFile = new File(arguments.exec.get(1));
 
-        List<IBundleCoverage> coverages = analyze(firstFile, secondFile, new File(arguments.classes));
+        List<IBundleCoverage> coverages = analyze(
+                firstFile,
+                secondFile,
+                arguments.classes.stream().map(File::new).collect(Collectors.toList())
+        );
 
         ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
         List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
@@ -32,7 +36,7 @@ public class Runner {
     private static List<IBundleCoverage> analyze(
             File firstFile,
             File secondFile,
-            File classesDirectory
+            List<File> classesDirectory
     ) throws IOException {
         CoverageAnalyzer analyzer = new CoverageAnalyzer(classesDirectory);
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();

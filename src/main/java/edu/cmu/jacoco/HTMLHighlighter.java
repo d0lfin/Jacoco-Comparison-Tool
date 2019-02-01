@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.List;
 
 import org.jacoco.core.analysis.ICounter;
 
@@ -22,20 +23,27 @@ public class HTMLHighlighter {
 		this.className = name;		
 	}
 
-	public boolean setSource(File source) {
-		if (source.exists()) {
-			try {
-				this.source = new BufferedReader(new FileReader(source.getAbsoluteFile()));
-                                return true;
-                                
-			} catch (FileNotFoundException e) {
-				e.printStackTrace();
-                                return false;
+	public boolean setSources(List<File> sources) {
+		boolean exist = false;
+
+		for (File source: sources) {
+			if (source.exists()) {
+				try {
+					this.source = new BufferedReader(new FileReader(source.getAbsoluteFile()));
+					exist = true;
+					break;
+				} catch (FileNotFoundException e) {
+					e.printStackTrace();
+					exist = false;
+				}
 			}
 		}
-		else {
-			System.out.println("Source does not exists " + source.getPath());
-                        return false;
+
+		if (exist) {
+			return true;
+		} else {
+			System.out.println("Source does not exists " + sources.get(0).getName());
+			return false;
 		}
 	}
 

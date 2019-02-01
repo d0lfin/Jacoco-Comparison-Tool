@@ -11,12 +11,13 @@ import org.jacoco.core.data.SessionInfoStore;
 
 import java.io.*;
 import java.util.Date;
+import java.util.List;
 
 class CoverageAnalyzer {
 
-    private File classesPath;
+    private List<File> classesPath;
 
-    CoverageAnalyzer(File classesPath) {
+    CoverageAnalyzer(List<File> classesPath) {
         this.classesPath = classesPath;
     }
 
@@ -44,7 +45,9 @@ class CoverageAnalyzer {
         Analyzer analyzer = new Analyzer(executionDataStore, coverageBuilder);
 
         try {
-            analyzer.analyzeAll(classesPath);
+            for (File file : classesPath) {
+                analyzer.analyzeAll(file);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

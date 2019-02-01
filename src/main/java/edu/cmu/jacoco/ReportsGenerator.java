@@ -26,7 +26,11 @@ public class ReportsGenerator {
 
         createDirectoryIfNotExists(reportDirectory);
         writer = new HTMLWriter(reportDirectory + "/index.html");
-        director = new CodeDirector(new File(arguments.sources), reportDirectory, new HTMLHighlighter());
+        director = new CodeDirector(
+                arguments.sources.stream().map(File::new).collect(Collectors.toList()),
+                reportDirectory,
+                new HTMLHighlighter()
+        );
     }
 
     public void generateDiffReport(List<CoverageInfo> coverageInfos, ClassesWithCoverageCollector collector) {
