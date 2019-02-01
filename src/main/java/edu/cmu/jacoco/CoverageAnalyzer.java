@@ -25,7 +25,7 @@ class CoverageAnalyzer {
     private ExecutionDataStore getExecutionDataStore(File... executionFiles) throws IOException {
         ExecFileLoader fileLoader = new ExecFileLoader();
         for (File executionFile : executionFiles) {
-            fileLoader.load(executionFile);
+            fileLoader.load(executionFile); // merge files
         }
         return fileLoader.getExecutionDataStore();
     }

@@ -12,13 +12,12 @@ import java.nio.file.Paths;
 
 import org.jacoco.core.analysis.ICounter;
 
-public class HTMLHighlighter implements CodeHighlighter{
+public class HTMLHighlighter {
 
 	private BufferedReader source;
 	private BufferedWriter target;
 	private String className;
 	
-	@Override
 	public void setClassName(String name) {
 		this.className = name;		
 	}
@@ -61,8 +60,6 @@ public class HTMLHighlighter implements CodeHighlighter{
 		}
 	}
 	
-
-	@Override
 	public void renderHeader() {
 		try {
 			target.write("<?xml version='1.0' encoding='UTF-8'?>");
@@ -85,9 +82,9 @@ public class HTMLHighlighter implements CodeHighlighter{
 
 	private void renderStyleSheets() {
 		try {
-			target.write("<link rel='stylesheet' href='../.resources/report.css' type='text/css'/>");
-			target.write("<link rel='stylesheet' href='../.resources/prettify.css' type='text/css'/>");
-			target.write("<link rel='stylesheet' href='../.resources/custom.css' type='text/css'/>");
+			target.write("<link rel='stylesheet' href='../resources/report.css' type='text/css'/>");
+			target.write("<link rel='stylesheet' href='../resources/prettify.css' type='text/css'/>");
+			target.write("<link rel='stylesheet' href='../resources/custom.css' type='text/css'/>");
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -96,14 +93,13 @@ public class HTMLHighlighter implements CodeHighlighter{
 	
 	private void renderScripts() {
 		try {
-			target.write("<script type='text/javascript' src='../.resources/prettify.js'></script>");
+			target.write("<script type='text/javascript' src='../resources/prettify.js'></script>");
 		} catch (IOException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}   
 	}
 	
-	@Override
 	public void renderCodePrefix() {
 		
 		try {			
@@ -119,7 +115,6 @@ public class HTMLHighlighter implements CodeHighlighter{
 		
 	}
 
-	@Override
 	public void renderFooter() {
 		
 		try {			
@@ -153,7 +148,6 @@ public class HTMLHighlighter implements CodeHighlighter{
 		}
 	}
 
-	@Override
 	public void renderCodeSuffix() {
 		try {
 			target.write("</pre>");
@@ -163,8 +157,6 @@ public class HTMLHighlighter implements CodeHighlighter{
 		}
 	}
 
-
-	@Override
 	public void renderLine(String title, int lineNo, int aBranchStatus, int bBranchStatus, int uBranchStatus, int aLineStatus, int bLineStatus, int uLineStatus) {
 		
 		String line, style; 

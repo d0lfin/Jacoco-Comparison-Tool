@@ -16,7 +16,7 @@ import org.jacoco.core.analysis.IPackageCoverage;
 
 public class CodeDirector {
 	
-	private CodeHighlighter writer;
+	private HTMLHighlighter writer;
 	private File sourceDirectory;
 	private File outputDirectory;
 	
