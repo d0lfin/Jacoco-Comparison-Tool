@@ -3,11 +3,11 @@ package edu.cmu.jacoco;
 import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
 import org.apache.commons.cli.ParseException;
 import org.jacoco.core.analysis.IBundleCoverage;
+import org.jacoco.core.data.ExecutionData;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class Runner {
@@ -29,16 +29,18 @@ public class Runner {
         reportsGenerator.generateClassesCoverageReports(coverages);
     }
 
-    private static  List<IBundleCoverage> analyze(
+    private static List<IBundleCoverage> analyze(
             File firstFile,
             File secondFile,
             File classesDirectory
     ) throws IOException {
         CoverageAnalyzer analyzer = new CoverageAnalyzer(classesDirectory);
+        ClassNamesCollector classNamesCollector = new ClassNamesCollector();
+        ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
         return Arrays.asList(
-                analyzer.analyze(firstFile),
-                analyzer.analyze(secondFile),
-                analyzer.analyze(firstFile, secondFile)
+                analyzer.analyze(classNamesCollector, firstFile),
+                analyzer.analyze(storeStrategy, secondFile),
+                analyzer.analyze(storeStrategy, firstFile, secondFile)
         );
     }
 
@@ -49,5 +51,20 @@ public class Runner {
         CoverageCalculator calculator = new CoverageCalculator();
         calculator.setCoverageVisitor(visitor);
         return coverages.stream().map(calculator::getInfo).collect(Collectors.toList());
+    }
+
+    private static class ClassNamesCollector implements ExecutionDataVisitor.StoreStrategy {
+
+        private final Set<String> classes = new LinkedHashSet<>();
+
+        @Override
+        public boolean shouldBeStored(ExecutionData data) {
+            classes.add(data.getName());
+            return true;
+        }
+
+        boolean contains(String className) {
+            return classes.contains(className);
+        }
     }
 }
