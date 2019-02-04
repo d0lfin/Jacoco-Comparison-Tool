@@ -22,15 +22,27 @@ public class Runner {
         List<IBundleCoverage> coverages = analyze(
                 firstFile,
                 secondFile,
-                arguments.classes.stream().map(File::new).collect(Collectors.toList())
+                getClasses(arguments).stream().map(File::new).collect(Collectors.toList())
         );
 
         ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
         List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
 
-        ReportsGenerator reportsGenerator = new ReportsGenerator(arguments);
+        ReportsGenerator reportsGenerator = new ReportsGenerator(
+                new File(arguments.report),
+                getSources(arguments),
+                arguments.titles
+        );
         reportsGenerator.generateDiffReport(coverageInfo, collector);
         reportsGenerator.generateClassesCoverageReports(coverages);
+    }
+
+    private static List<String> getClasses(ArgumentsExtractor.Arguments arguments) {
+        return arguments.classes;
+    }
+
+    private static List<String> getSources(ArgumentsExtractor.Arguments arguments) {
+        return arguments.sources;
     }
 
     private static List<IBundleCoverage> analyze(

@@ -15,26 +15,22 @@ public class ReportsGenerator {
     private final CodeDirector director;
     private final int numberOfTestSuites;
     private final HTMLWriter writer;
+    private final List<String> titles;
 
-    private ArgumentsExtractor.Arguments arguments;
-
-    public ReportsGenerator(ArgumentsExtractor.Arguments arguments) {
-        File reportDirectory = new File(arguments.report);
-        this.arguments = arguments;
-
-        numberOfTestSuites = arguments.exec.size();
-
+    public ReportsGenerator(File reportDirectory, List<String> sources, List<String> titles) {
         createDirectoryIfNotExists(reportDirectory);
+        this.titles = titles;
+        numberOfTestSuites = titles.size();
         writer = new HTMLWriter(reportDirectory + "/index.html");
         director = new CodeDirector(
-                arguments.sources.stream().map(File::new).collect(Collectors.toList()),
+                sources.stream().map(File::new).collect(Collectors.toList()),
                 reportDirectory,
                 new HTMLHighlighter()
         );
     }
 
     public void generateDiffReport(List<CoverageInfo> coverageInfos, ClassesWithCoverageCollector collector) {
-        List<String> testSuiteTitles = wrapTitles(arguments.titles);
+        List<String> testSuiteTitles = wrapTitles(titles);
         renderBranchCoverage(testSuiteTitles, coverageInfos, collector.classesWithCoverage);
     }
 
