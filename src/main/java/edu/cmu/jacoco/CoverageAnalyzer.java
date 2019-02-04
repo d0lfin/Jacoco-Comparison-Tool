@@ -42,7 +42,16 @@ class CoverageAnalyzer {
 
     private IBundleCoverage analyze(ExecutionDataStore executionDataStore) {
         CoverageBuilder coverageBuilder = new CoverageBuilder();
-        Analyzer analyzer = new Analyzer(executionDataStore, coverageBuilder);
+        Analyzer analyzer = new Analyzer(executionDataStore, coverageBuilder) {
+            @Override
+            public void analyzeClass(final InputStream input, final String location)  {
+                try {
+                    super.analyzeClass(input, location);
+                } catch (IOException ignored) {
+                    System.out.println(ignored);
+                }
+            }
+        };
 
         try {
             for (File file : classesPath) {
