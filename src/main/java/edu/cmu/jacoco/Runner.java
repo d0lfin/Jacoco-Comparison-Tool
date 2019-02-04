@@ -42,7 +42,34 @@ public class Runner {
     }
 
     private static List<String> getSources(ArgumentsExtractor.Arguments arguments) {
-        return arguments.sources;
+        if (arguments.sources.isEmpty()) {
+            List<String> sources = new LinkedList<>();
+            visit(new File(arguments.root), sources, file -> file.getName().equals("src"));
+            return sources;
+        } else {
+            return arguments.sources;
+        }
+    }
+
+    private static void visit(File directory, List<String> directories, PathStoreStrategy pathStoreStrategy) {
+        File[] files = directory.listFiles();
+
+        if (files == null) {
+            return;
+        }
+
+        for (File file: files) {
+            if (!file.isDirectory()) {
+                return;
+            }
+
+            if (pathStoreStrategy.shouldBeStored(file)) {
+                directories.add(file.getAbsolutePath());
+                return;
+            }
+
+            visit(file, directories, pathStoreStrategy);
+        }
     }
 
     private static List<IBundleCoverage> analyze(
@@ -82,5 +109,10 @@ public class Runner {
         boolean contains(String className) {
             return classes.contains(className);
         }
+    }
+
+    private interface PathStoreStrategy {
+
+        boolean shouldBeStored(File file);
     }
 }
