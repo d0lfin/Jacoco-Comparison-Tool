@@ -3,6 +3,7 @@ package edu.cmu.jacoco;
 import org.apache.commons.cli.*;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 class ArgumentsExtractor {
@@ -41,9 +42,12 @@ class ArgumentsExtractor {
         CommandLineParser parser = new BasicParser();
         CommandLine line = parser.parse(options, args);
 
+        String sources = line.getOptionValue(SOURCES);
+        String classes = line.getOptionValue(CLASSES);
+
         return new Arguments(
-                Arrays.asList(line.getOptionValue(SOURCES).split(",")),
-                Arrays.asList(line.getOptionValue(CLASSES).split(",")),
+                sources == null ? Collections.emptyList() : Arrays.asList(sources.split(",")),
+                classes == null ? Collections.emptyList() : Arrays.asList(classes.split(",")),
                 line.getOptionValue(REPORT),
                 line.getOptionValue(ROOT),
                 Arrays.asList(line.getOptionValue(EXEC).split(",")),

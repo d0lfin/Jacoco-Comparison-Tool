@@ -38,14 +38,32 @@ public class Runner {
     }
 
     private static List<String> getClasses(ArgumentsExtractor.Arguments arguments) {
-        return arguments.classes;
+        if (arguments.classes.isEmpty()) {
+            List<String> javac = new LinkedList<>();
+            visit(new File(arguments.root), javac, file -> file.getName().equals("javac"));
+            List<String> classes = new LinkedList<>();
+            for (String path: javac) {
+                visit(new File(path), classes, file -> file.getName().equals("classes"));
+            }
+            return classes;
+        } else {
+            return arguments.classes;
+        }
     }
 
     private static List<String> getSources(ArgumentsExtractor.Arguments arguments) {
         if (arguments.sources.isEmpty()) {
-            List<String> sources = new LinkedList<>();
-            visit(new File(arguments.root), sources, file -> file.getName().equals("src"));
-            return sources;
+            List<String> src = new LinkedList<>();
+            visit(new File(arguments.root), src, file -> file.getName().equals("src"));
+            List<String> main = new LinkedList<>();
+            for (String path: src) {
+                visit(new File(path), main, file -> file.getName().equals("main"));
+            }
+            List<String> java = new LinkedList<>();
+            for (String path: main) {
+                visit(new File(path), java, file -> file.getName().equals("java"));
+            }
+            return java;
         } else {
             return arguments.sources;
         }
@@ -59,16 +77,13 @@ public class Runner {
         }
 
         for (File file: files) {
-            if (!file.isDirectory()) {
-                return;
-            }
+            if (file.isDirectory()) {
+                if (pathStoreStrategy.shouldBeStored(file)) {
+                    directories.add(file.getAbsolutePath());
+                }
 
-            if (pathStoreStrategy.shouldBeStored(file)) {
-                directories.add(file.getAbsolutePath());
-                return;
+                visit(file, directories, pathStoreStrategy);
             }
-
-            visit(file, directories, pathStoreStrategy);
         }
     }
 
