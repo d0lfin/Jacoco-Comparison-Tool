@@ -9,10 +9,7 @@ import org.jacoco.core.data.ExecutionData;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 
 import static java.lang.Runtime.getRuntime;
@@ -126,8 +123,7 @@ public class Runner {
 
     private static class ClassNamesCollector implements ExecutionDataVisitor.StoreStrategy {
 
-        private final Builder<String, Boolean> builder = new Builder<String, Boolean>().initialCapacity(100000);
-        private final Set<String> classes = Collections.newSetFromMap(builder.build());
+        private final Set<String> classes = new ConcurrentSkipListSet<>();
 
         @Override
         public boolean shouldBeStored(ExecutionData data) {

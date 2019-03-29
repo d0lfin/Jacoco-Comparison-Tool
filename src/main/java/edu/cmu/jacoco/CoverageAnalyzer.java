@@ -1,8 +1,8 @@
 package edu.cmu.jacoco;
 
 import edu.cmu.jacoco.ExecutionDataVisitor.StoreStrategy;
-import org.jacoco.core.analysis.Analyzer;
-import org.jacoco.core.analysis.CoverageBuilder;
+import edu.cmu.jacoco.async.Analyzer;
+import edu.cmu.jacoco.async.CoverageBuilder;
 import org.jacoco.core.analysis.IBundleCoverage;
 import org.jacoco.core.data.ExecutionDataReader;
 import org.jacoco.core.data.ExecutionDataStore;
@@ -12,7 +12,12 @@ import org.jacoco.core.data.SessionInfoStore;
 import java.io.*;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
+import java.util.stream.Collectors;
+
+import static java.util.concurrent.CompletableFuture.runAsync;
 
 class CoverageAnalyzer {
 
@@ -45,26 +50,35 @@ class CoverageAnalyzer {
 
     private IBundleCoverage analyze(ExecutionDataStore executionDataStore) {
         CoverageBuilder coverageBuilder = new CoverageBuilder();
+
+        List<CompletableFuture<Void>> tasks = classesPath.stream()
+                .map(file -> runAsync(() -> analyzeFile(file, executionDataStore, coverageBuilder), executorService))
+                .collect(Collectors.toList());
+
+        try {
+            CompletableFuture.allOf((CompletableFuture<?>) tasks).get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+
+        return coverageBuilder.getBundle(String.valueOf(new Date().getTime()));
+    }
+
+    private void analyzeFile(File file, ExecutionDataStore executionDataStore, CoverageBuilder coverageBuilder) {
         Analyzer analyzer = new Analyzer(executionDataStore, coverageBuilder) {
             @Override
             public void analyzeClass(final InputStream input, final String location)  {
                 try {
                     super.analyzeClass(input, location);
-                } catch (IOException ignored) {
-                    System.out.println(ignored);
-                }
+                } catch (IOException ignored) {}
             }
         };
 
         try {
-            for (File file : classesPath) {
-                analyzer.analyzeAll(file);
-            }
+            analyzer.analyzeAll(file);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
-        return coverageBuilder.getBundle(String.valueOf(new Date().getTime()));
     }
 
     private class FileLoader {
