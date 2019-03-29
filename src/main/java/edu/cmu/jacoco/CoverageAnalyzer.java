@@ -12,13 +12,16 @@ import org.jacoco.core.data.SessionInfoStore;
 import java.io.*;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 
 class CoverageAnalyzer {
 
-    private List<File> classesPath;
+    private final List<File> classesPath;
+    private ExecutorService executorService;
 
-    CoverageAnalyzer(List<File> classesPath) {
+    CoverageAnalyzer(List<File> classesPath, ExecutorService executorService) {
         this.classesPath = classesPath;
+        this.executorService = executorService;
     }
 
     IBundleCoverage analyze(StoreStrategy storeStrategy, File... executionFiles) throws IOException {

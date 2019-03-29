@@ -1,5 +1,6 @@
 package edu.cmu.jacoco;
 
+import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
 import org.apache.commons.cli.ParseException;
 import org.jacoco.core.analysis.IBundleCoverage;
@@ -8,11 +9,18 @@ import org.jacoco.core.data.ExecutionData;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
+
+import static java.lang.Runtime.getRuntime;
+import static java.util.concurrent.Executors.newFixedThreadPool;
 
 public class Runner {
 
-    public static void main(final String[] args) throws ParseException, IOException {
+    public static void main(final String[] args) throws ParseException, IOException, ExecutionException, InterruptedException {
         ArgumentsExtractor argumentsExtractor = new ArgumentsExtractor();
         ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments(args);
 
@@ -91,15 +99,20 @@ public class Runner {
             File firstFile,
             File secondFile,
             List<File> classesDirectory
-    ) throws IOException {
-        CoverageAnalyzer analyzer = new CoverageAnalyzer(classesDirectory);
+    ) throws IOException, ExecutionException, InterruptedException {
+        ExecutorService executorService = newFixedThreadPool(getRuntime().availableProcessors() * 2 + 1);
+        CoverageAnalyzer analyzer = new CoverageAnalyzer(classesDirectory, executorService);
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();
         ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
-        return Arrays.asList(
-                analyzer.analyze(classNamesCollector, firstFile),
-                analyzer.analyze(storeStrategy, secondFile),
-                analyzer.analyze(storeStrategy, firstFile, secondFile)
-        );
+
+        IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFile);
+
+        Future<IBundleCoverage> coverage = executorService.submit(
+                () -> analyzer.analyze(storeStrategy, secondFile));
+        Future<IBundleCoverage> mergedCoverage = executorService.submit(
+                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
+
+        return Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
     }
 
     private static List<CoverageInfo> calculateInfo(
@@ -113,7 +126,8 @@ public class Runner {
 
     private static class ClassNamesCollector implements ExecutionDataVisitor.StoreStrategy {
 
-        private final Set<String> classes = new LinkedHashSet<>();
+        private final Builder<String, Boolean> builder = new Builder<String, Boolean>().initialCapacity(100000);
+        private final Set<String> classes = Collections.newSetFromMap(builder.build());
 
         @Override
         public boolean shouldBeStored(ExecutionData data) {
