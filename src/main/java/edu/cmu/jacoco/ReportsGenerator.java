@@ -23,7 +23,7 @@ public class ReportsGenerator {
         numberOfTestSuites = titles.size();
         writer = new HTMLWriter(reportDirectory + "/index.html");
         director = new CodeDirector(
-                sources.stream().map(File::new).collect(Collectors.toList()),
+                sources.stream().map(File::new).filter(File::exists).collect(Collectors.toList()),
                 reportDirectory,
                 new HTMLHighlighter()
         );

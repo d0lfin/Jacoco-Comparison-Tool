@@ -22,7 +22,7 @@ public class Runner {
         List<IBundleCoverage> coverages = analyze(
                 firstFile,
                 secondFile,
-                getClasses(arguments).stream().map(File::new).collect(Collectors.toList())
+                getClasses(arguments).stream().map(File::new).filter(File::exists).collect(Collectors.toList())
         );
 
         ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
