@@ -1,6 +1,5 @@
 package edu.cmu.jacoco;
 
-import com.googlecode.concurrentlinkedhashmap.ConcurrentLinkedHashMap.Builder;
 import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
 import org.apache.commons.cli.ParseException;
 import org.jacoco.core.analysis.IBundleCoverage;
@@ -9,7 +8,10 @@ import org.jacoco.core.data.ExecutionData;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.*;
+import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static java.lang.Runtime.getRuntime;
@@ -30,16 +32,16 @@ public class Runner {
                 getClasses(arguments).stream().map(File::new).filter(File::exists).collect(Collectors.toList())
         );
 
-        ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
-        List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
-
-        ReportsGenerator reportsGenerator = new ReportsGenerator(
-                new File(arguments.report),
-                getSources(arguments),
-                arguments.titles
-        );
-        reportsGenerator.generateDiffReport(coverageInfo, collector);
-        reportsGenerator.generateClassesCoverageReports(coverages);
+//        ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
+//        List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
+//
+//        ReportsGenerator reportsGenerator = new ReportsGenerator(
+//                new File(arguments.report),
+//                getSources(arguments),
+//                arguments.titles
+//        );
+//        reportsGenerator.generateDiffReport(coverageInfo, collector);
+//        reportsGenerator.generateClassesCoverageReports(coverages);
     }
 
     private static List<String> getClasses(ArgumentsExtractor.Arguments arguments) {
@@ -102,14 +104,16 @@ public class Runner {
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();
         ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
 
+        System.out.println("[dolf] Start analyze: " + new Date().toString());
         IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFile);
+        System.out.println("[dolf] Stop analyze: " + new Date().toString());
 
-        Future<IBundleCoverage> coverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, secondFile));
-        Future<IBundleCoverage> mergedCoverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
+//        Future<IBundleCoverage> coverage = executorService.submit(
+//                () -> analyzer.analyze(storeStrategy, secondFile));
+//        Future<IBundleCoverage> mergedCoverage = executorService.submit(
+//                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
 
-        return Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
+        return Arrays.asList(manualCoverage);//, coverage.get(), mergedCoverage.get());
     }
 
     private static List<CoverageInfo> calculateInfo(
