@@ -51,12 +51,12 @@ class CoverageAnalyzer {
     private IBundleCoverage analyze(ExecutionDataStore executionDataStore) {
         CoverageBuilder coverageBuilder = new CoverageBuilder();
 
-        List<CompletableFuture<Void>> tasks = classesPath.stream()
+        CompletableFuture<Void>[] tasks = classesPath.stream()
                 .map(file -> runAsync(() -> analyzeFile(file, executionDataStore, coverageBuilder), executorService))
-                .collect(Collectors.toList());
+                .collect(Collectors.toList()).toArray(new CompletableFuture[classesPath.size()]);
 
         try {
-            CompletableFuture.allOf((CompletableFuture<?>) tasks).get();
+            CompletableFuture.allOf(tasks).get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
         }

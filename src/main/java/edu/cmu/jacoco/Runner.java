@@ -20,8 +20,21 @@ import static java.util.concurrent.Executors.newFixedThreadPool;
 public class Runner {
 
     public static void main(final String[] args) throws ParseException, IOException, ExecutionException, InterruptedException {
+        System.out.println("[dolf] Start analyze: " + new Date().toString());
+
         ArgumentsExtractor argumentsExtractor = new ArgumentsExtractor();
         ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments(args);
+        /*ArgumentsExtractor.Arguments arguments = new ArgumentsExtractor.Arguments(
+                Collections.singletonList("/Users/dolf/Documents/work/browser-android/browser/app/src/main/java"),
+                Collections.singletonList("/Users/dolf/Documents/work/browser-android/browser/app/build/intermediates/javac/x86StableApi21LocalDebug/compileX86StableApi21LocalDebugJavaWithJavac/classes"),
+                "/Users/dolf/Documents/work/browser-android/browser/app/build/reports/coverage-comparison/",
+                null,
+                Arrays.asList(
+                        "/Users/dolf/Documents/work/browser-android/browser/app/build/tmp/manual_coverage.exec",
+                        "/Users/dolf/Documents/work/browser-android/browser/app/build/tmp/manual_coverage.exec"
+                ),
+                Arrays.asList("manual", "tests")
+        );*/
 
         final File firstFile = new File(arguments.exec.get(0));
         final File secondFile = new File(arguments.exec.get(1));
@@ -32,16 +45,18 @@ public class Runner {
                 getClasses(arguments).stream().map(File::new).filter(File::exists).collect(Collectors.toList())
         );
 
-//        ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
-//        List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
-//
-//        ReportsGenerator reportsGenerator = new ReportsGenerator(
-//                new File(arguments.report),
-//                getSources(arguments),
-//                arguments.titles
-//        );
-//        reportsGenerator.generateDiffReport(coverageInfo, collector);
-//        reportsGenerator.generateClassesCoverageReports(coverages);
+        ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
+        List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
+
+        ReportsGenerator reportsGenerator = new ReportsGenerator(
+                new File(arguments.report),
+                getSources(arguments),
+                arguments.titles
+        );
+        reportsGenerator.generateDiffReport(coverageInfo, collector);
+        reportsGenerator.generateClassesCoverageReports(coverages);
+
+        System.out.println("[dolf] Stop analyze: " + new Date().toString());
     }
 
     private static List<String> getClasses(ArgumentsExtractor.Arguments arguments) {
@@ -104,16 +119,18 @@ public class Runner {
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();
         ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
 
-        System.out.println("[dolf] Start analyze: " + new Date().toString());
         IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFile);
-        System.out.println("[dolf] Stop analyze: " + new Date().toString());
 
-//        Future<IBundleCoverage> coverage = executorService.submit(
-//                () -> analyzer.analyze(storeStrategy, secondFile));
-//        Future<IBundleCoverage> mergedCoverage = executorService.submit(
-//                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
+        Future<IBundleCoverage> coverage = executorService.submit(
+                () -> analyzer.analyze(storeStrategy, secondFile));
+        Future<IBundleCoverage> mergedCoverage = executorService.submit(
+                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
 
-        return Arrays.asList(manualCoverage);//, coverage.get(), mergedCoverage.get());
+        List<IBundleCoverage> result = Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
+
+        executorService.shutdown();
+
+        return result;
     }
 
     private static List<CoverageInfo> calculateInfo(

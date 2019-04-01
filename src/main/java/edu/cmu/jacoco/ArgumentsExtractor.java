@@ -55,7 +55,7 @@ class ArgumentsExtractor {
         );
     }
 
-    class Arguments {
+    static class Arguments {
         final List<String> sources;
         final List<String> classes;
         final String report;
