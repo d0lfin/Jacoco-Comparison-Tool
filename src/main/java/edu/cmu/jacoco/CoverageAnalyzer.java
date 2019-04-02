@@ -29,13 +29,13 @@ class CoverageAnalyzer {
         this.executorService = executorService;
     }
 
-    IBundleCoverage analyze(StoreStrategy storeStrategy, File... executionFiles) throws IOException {
+    IBundleCoverage analyze(StoreStrategy storeStrategy, List<File> executionFiles) throws IOException {
         return analyze(getExecutionDataStore(storeStrategy, executionFiles));
     }
 
     private ExecutionDataStore getExecutionDataStore(
             StoreStrategy storeStrategy,
-            File... executionFiles
+            List<File> executionFiles
     ) throws IOException {
         ExecutionDataVisitor visitor = new ExecutionDataVisitor();
         visitor.setStoreStrategy(storeStrategy);
@@ -51,9 +51,10 @@ class CoverageAnalyzer {
     private IBundleCoverage analyze(ExecutionDataStore executionDataStore) {
         CoverageBuilder coverageBuilder = new CoverageBuilder();
 
-        CompletableFuture<Void>[] tasks = classesPath.stream()
+        CompletableFuture[] tasks = classesPath.stream()
                 .map(file -> runAsync(() -> analyzeFile(file, executionDataStore, coverageBuilder), executorService))
-                .collect(Collectors.toList()).toArray(new CompletableFuture[classesPath.size()]);
+                .collect(Collectors.toList())
+                .toArray(new CompletableFuture[classesPath.size()]);
 
         try {
             CompletableFuture.allOf(tasks).get();

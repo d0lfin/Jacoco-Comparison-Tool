@@ -20,33 +20,23 @@ import static java.util.concurrent.Executors.newFixedThreadPool;
 public class Runner {
 
     public static void main(final String[] args) throws ParseException, IOException, ExecutionException, InterruptedException {
-        System.out.println("[dolf] Start analyze: " + new Date().toString());
+        System.out.println("[Jacoco comparison tool] Start: " + new Date().toString());
 
         ArgumentsExtractor argumentsExtractor = new ArgumentsExtractor();
         ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments(args);
-        /*ArgumentsExtractor.Arguments arguments = new ArgumentsExtractor.Arguments(
-                Collections.singletonList("/Users/dolf/Documents/work/browser-android/browser/app/src/main/java"),
-                Collections.singletonList("/Users/dolf/Documents/work/browser-android/browser/app/build/intermediates/javac/x86StableApi21LocalDebug/compileX86StableApi21LocalDebugJavaWithJavac/classes"),
-                "/Users/dolf/Documents/work/browser-android/browser/app/build/reports/coverage-comparison/",
-                null,
-                Arrays.asList(
-                        "/Users/dolf/Documents/work/browser-android/browser/app/build/tmp/manual_coverage.exec",
-                        "/Users/dolf/Documents/work/browser-android/browser/app/build/tmp/manual_coverage.exec"
-                ),
-                Arrays.asList("manual", "tests")
-        );*/
-
-        final File firstFile = new File(arguments.exec.get(0));
-        final File secondFile = new File(arguments.exec.get(1));
 
         List<IBundleCoverage> coverages = analyze(
-                firstFile,
-                secondFile,
+                arguments.first.stream().map(File::new).collect(Collectors.toList()),
+                arguments.second.stream().map(File::new).collect(Collectors.toList()),
                 getClasses(arguments).stream().map(File::new).filter(File::exists).collect(Collectors.toList())
         );
 
+        System.out.println("[Jacoco comparison tool] Stop analyze coverage: " + new Date().toString());
+
         ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
         List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
+
+        System.out.println("[Jacoco comparison tool] Stop calculating info for report: " + new Date().toString());
 
         ReportsGenerator reportsGenerator = new ReportsGenerator(
                 new File(arguments.report),
@@ -56,7 +46,7 @@ public class Runner {
         reportsGenerator.generateDiffReport(coverageInfo, collector);
         reportsGenerator.generateClassesCoverageReports(coverages);
 
-        System.out.println("[dolf] Stop analyze: " + new Date().toString());
+        System.out.println("[Jacoco comparison tool] Stop: " + new Date().toString());
     }
 
     private static List<String> getClasses(ArgumentsExtractor.Arguments arguments) {
@@ -110,8 +100,8 @@ public class Runner {
     }
 
     private static List<IBundleCoverage> analyze(
-            File firstFile,
-            File secondFile,
+            List<File> firstFiles,
+            List<File> secondFiles,
             List<File> classesDirectory
     ) throws IOException, ExecutionException, InterruptedException {
         ExecutorService executorService = newFixedThreadPool(getRuntime().availableProcessors() * 2 + 1);
@@ -119,12 +109,16 @@ public class Runner {
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();
         ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
 
-        IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFile);
+        IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFiles);
+
+        List<File> allFiles = new ArrayList<>();
+        allFiles.addAll(firstFiles);
+        allFiles.addAll(secondFiles);
 
         Future<IBundleCoverage> coverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, secondFile));
+                () -> analyzer.analyze(storeStrategy, secondFiles));
         Future<IBundleCoverage> mergedCoverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, firstFile, secondFile));
+                () -> analyzer.analyze(storeStrategy, allFiles));
 
         List<IBundleCoverage> result = Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
 

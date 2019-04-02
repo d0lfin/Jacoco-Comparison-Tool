@@ -12,7 +12,8 @@ class ArgumentsExtractor {
     private static final String REPORT = "report";
     private static final String CLASSES = "classes";
     private static final String ROOT = "root";
-    private static final String EXEC = "exec";
+    private static final String FIRST = "first";
+    private static final String SECOND = "second";
     private static final String TITLES = "titles";
 
     private final Options options = new Options();
@@ -22,7 +23,8 @@ class ArgumentsExtractor {
         options.addOption(create(REPORT, "The directory that the generated report will be written to"));
         options.addOption(create(CLASSES, "The directory containing the classes files", false));
         options.addOption(create(ROOT, "The directory containing the classes files", false));
-        options.addOption(create(EXEC, "The paths to the Jacoco execution files, coma separated"));
+        options.addOption(create(FIRST, "The paths to the Jacoco execution files, coma separated"));
+        options.addOption(create(SECOND, "The paths to the Jacoco execution files, coma separated"));
         options.addOption(create(TITLES, "The titles of the test suites in the coverage report, coma separated"));
     }
 
@@ -50,7 +52,8 @@ class ArgumentsExtractor {
                 classes == null ? Collections.emptyList() : Arrays.asList(classes.split(",")),
                 line.getOptionValue(REPORT),
                 line.getOptionValue(ROOT),
-                Arrays.asList(line.getOptionValue(EXEC).split(",")),
+                Arrays.asList(line.getOptionValue(FIRST).split(",")),
+                Arrays.asList(line.getOptionValue(SECOND).split(",")),
                 Arrays.asList(line.getOptionValue(TITLES).split(","))
         );
     }
@@ -60,20 +63,23 @@ class ArgumentsExtractor {
         final List<String> classes;
         final String report;
         final String root;
-        final List<String> exec;
+        final List<String> first;
+        final List<String> second;
         final List<String> titles;
 
         Arguments(List<String> src,
                   List<String> classes,
                   String report,
                   String root,
-                  List<String> exec,
+                  List<String> first,
+                  List<String> second,
                   List<String> titles) {
             this.sources = src;
             this.classes = classes;
             this.report = report;
             this.root = root;
-            this.exec = exec;
+            this.first = first;
+            this.second = second;
             this.titles = titles;
         }
     }
