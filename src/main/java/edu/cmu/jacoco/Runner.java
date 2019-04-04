@@ -58,13 +58,17 @@ public class Runner {
 
             int elements = fixedArgs.size() - 1;
             String lastArg = fixedArgs.get(elements);
-            fixedArgs.set(elements, lastArg + arg);
+            fixedArgs.set(elements, lastArg + " " + arg);
+        }
+        String[] newArgs = fixedArgs.toArray(new String[0]);
+        for (String arg: newArgs) {
+            System.out.println("[Jacoco comparison tool] Fixed args: " + arg);
         }
 
         System.out.println("[Jacoco comparison tool] Start: " + new Date().toString());
 
         ArgumentsExtractor argumentsExtractor = new ArgumentsExtractor();
-        ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments((String[]) fixedArgs.toArray());
+        ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments(newArgs);
 
         List<IBundleCoverage> coverages = analyze(
                 arguments.first.stream().map(File::new).collect(Collectors.toList()),
