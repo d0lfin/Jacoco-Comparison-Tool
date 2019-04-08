@@ -2,6 +2,7 @@ package edu.cmu.jacoco;
 
 import org.apache.commons.cli.*;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -42,7 +43,7 @@ class ArgumentsExtractor {
 
     Arguments extractArguments(String[] args) throws ParseException {
         CommandLineParser parser = new BasicParser();
-        CommandLine line = parser.parse(options, args);
+        CommandLine line = parser.parse(options, fix(args));
 
         String sources = line.getOptionValue(SOURCES);
         String classes = line.getOptionValue(CLASSES);
@@ -56,6 +57,49 @@ class ArgumentsExtractor {
                 Arrays.asList(line.getOptionValue(SECOND).split(",")),
                 Arrays.asList(line.getOptionValue(TITLES).split(","))
         );
+    }
+
+    private String[] fix(String[] args) {
+        List<String> fixedArgs = new ArrayList<String>() {
+            @Override
+            public boolean add(String o) {
+                return super.add(o.replace("\"", ""));
+            }
+
+            @Override
+            public String set(int index, String element) {
+                return super.set(index, element.replace("\"", ""));
+            }
+        };
+
+        boolean listStarted = false;
+        for (String arg: args) {
+            if (arg.startsWith("\"") && arg.endsWith("\"")) {
+                fixedArgs.add(arg);
+                continue;
+            }
+
+            if (arg.startsWith("\"")) {
+                listStarted = true;
+                fixedArgs.add(arg);
+                continue;
+            }
+
+            if (!listStarted) {
+                fixedArgs.add(arg);
+                continue;
+            }
+
+            if (arg.endsWith("\"")) {
+                listStarted = false;
+            }
+
+            int elements = fixedArgs.size() - 1;
+            String lastArg = fixedArgs.get(elements);
+            fixedArgs.set(elements, lastArg + " " + arg);
+        }
+
+        return fixedArgs.toArray(new String[0]);
     }
 
     static class Arguments {
