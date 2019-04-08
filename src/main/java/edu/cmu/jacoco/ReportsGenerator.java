@@ -104,7 +104,7 @@ public class ReportsGenerator {
         }
 
 
-        renderClassBranchCoverage("", "Total Branch Coverage", packageCoverages, new HashMap<String, String>() {{
+        renderClassBranchCoverage("", "Total Lines Coverage", packageCoverages, new HashMap<String, String>() {{
             put("bgcolor", "C3FAF9");
         }});
 

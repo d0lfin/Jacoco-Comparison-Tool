@@ -63,7 +63,7 @@ public class HTMLWriter {
 		
 		renderHeader(testSuiteTitles);
 		
-		renderClassHeader("", "Total Branch Coverage", false);
+		renderClassHeader("", "Total Lines Coverage", false);
 		
 		for (CoverageCalculator.CoverageInfo coverageInfo : totalCoverage) {
 			renderTestSuitCoverage(coverageInfo, new HashMap<String, String>() {{put("bgcolor", "C3FAF9");}});

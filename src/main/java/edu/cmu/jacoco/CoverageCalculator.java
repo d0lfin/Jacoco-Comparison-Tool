@@ -2,6 +2,7 @@ package edu.cmu.jacoco;
 
 import org.jacoco.core.analysis.IBundleCoverage;
 import org.jacoco.core.analysis.IClassCoverage;
+import org.jacoco.core.analysis.ICounter;
 import org.jacoco.core.analysis.IPackageCoverage;
 
 import java.util.*;
@@ -48,8 +49,9 @@ class CoverageCalculator {
 
                 packageCoverageInfo.childs.put(className, classCoverageInfo);
 
-                final int total = classCoverage.getBranchCounter().getTotalCount();
-                final int covered = classCoverage.getBranchCounter().getCoveredCount();
+                ICounter counter = classCoverage.getLineCounter();
+                final int total = counter.getTotalCount();
+                final int covered = counter.getCoveredCount();
 
                 classCoverageInfo.totalBranches = total;
                 classCoverageInfo.coveredBranches = covered;
