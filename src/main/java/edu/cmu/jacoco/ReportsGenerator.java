@@ -126,7 +126,7 @@ public class ReportsGenerator {
                                            List<CoverageInfo> classCoverages,
                                            HashMap<String, String> options) {
 
-        boolean different = classCoverages.get(0).getCoveredBranches() != classCoverages.get(1).getCoveredBranches();
+        boolean different = classCoverages.get(0).getCoveredLines() != classCoverages.get(1).getCoveredLines();
         writer.renderClassHeader(replace(packageName), replace(className), different);
 
         for (CoverageInfo coverage : classCoverages) {

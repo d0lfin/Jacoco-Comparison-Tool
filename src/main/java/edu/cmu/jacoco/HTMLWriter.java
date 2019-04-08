@@ -140,10 +140,10 @@ public class HTMLWriter {
 	public void renderTestSuitCoverage(CoverageCalculator.CoverageInfo c, Map<String, String> options) {
 		
 		String s = String.format("<td> %-5d of %-5d </td> <td bgcolor='#%s'> %-7.0f </td> ",
-								c.getCoveredBranches(),
-								c.getTotalBranches(),
+								c.getCoveredLines(),
+								c.getTotalLines(),
 								options.get("bgcolor"),
-								c.getTotalBranches() > 0 ? c.getCoveredBranches() * 100 / c.getTotalBranches() : 0.0);
+								c.getTotalLines() > 0 ? c.getCoveredLines() * 100 / c.getTotalLines() : 0.0);
 		try {
 			bw.write(s);
 		} catch (IOException e) {

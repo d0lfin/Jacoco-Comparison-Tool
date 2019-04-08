@@ -53,14 +53,14 @@ class CoverageCalculator {
                 final int total = counter.getTotalCount();
                 final int covered = counter.getCoveredCount();
 
-                classCoverageInfo.totalBranches = total;
-                classCoverageInfo.coveredBranches = covered;
+                classCoverageInfo.totalLines = total;
+                classCoverageInfo.coveredLines = covered;
 
-                packageCoverageInfo.totalBranches += total;
-                packageCoverageInfo.coveredBranches += covered;
+                packageCoverageInfo.totalLines += total;
+                packageCoverageInfo.coveredLines += covered;
 
-                totalCoverageInfo.totalBranches += total;
-                totalCoverageInfo.coveredBranches += covered;
+                totalCoverageInfo.totalLines += total;
+                totalCoverageInfo.coveredLines += covered;
 
                 visitor.visit(packageName, className, classCoverageInfo);
             }
@@ -76,17 +76,17 @@ class CoverageCalculator {
 
 
     static class CoverageInfo {
-        private int totalBranches = 0;
-        private int coveredBranches = 0;
+        private int totalLines = 0;
+        private int coveredLines = 0;
 
         private Map<String, CoverageInfo> childs = new HashMap<>();
 
-        int getTotalBranches() {
-            return totalBranches;
+        int getTotalLines() {
+            return totalLines;
         }
 
-        int getCoveredBranches() {
-            return coveredBranches;
+        int getCoveredLines() {
+            return coveredLines;
         }
 
         Map<String, CoverageInfo> getChilds() {
