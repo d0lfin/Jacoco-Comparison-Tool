@@ -1,8 +1,10 @@
 package edu.cmu.jacoco;
 
-import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
 import org.apache.commons.cli.ParseException;
-import org.jacoco.core.analysis.*;
+import org.jacoco.core.analysis.IBundleCoverage;
+import org.jacoco.core.analysis.IClassCoverage;
+import org.jacoco.core.analysis.ICounter;
+import org.jacoco.core.analysis.IPackageCoverage;
 import org.jacoco.core.data.ExecutionData;
 
 import java.io.File;
@@ -35,13 +37,9 @@ public class Runner {
 
         IBundleCoverage firstCoverage = coverage.get(0);
         IBundleCoverage secondCoverage = coverage.get(1);
-        IBundleCoverage mergedCoverage = coverage.get(1);
 
         LinesInfo firstFileInfo = getInfo(firstCoverage);
         LinesInfo secondFileInfo = getInfo(secondCoverage);
-
-        ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
-        List<CoverageInfo> coverageInfo = calculateInfo(firstCoverage, secondCoverage, mergedCoverage, collector);
 
         System.out.println("[Jacoco comparison tool] Stop calculating info for report: " + new Date().toString());
 
@@ -53,7 +51,6 @@ public class Runner {
                 sources,
                 arguments.titles
         );
-//        reportsGenerator.generateDiffReport(coverageInfo, collector);
         new NewReportGenerator(new File(arguments.report), sources).generateReport(firstFileInfo, secondFileInfo);
 
         reportsGenerator.generateClassesCoverageReports(coverage);
@@ -135,24 +132,6 @@ public class Runner {
         List<IBundleCoverage> result = Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
 
         executorService.shutdown();
-
-        return result;
-    }
-
-    private static List<CoverageInfo> calculateInfo(
-            IBundleCoverage baseCoverage,
-            IBundleCoverage coverage,
-            IBundleCoverage mergedCoverage,
-            CoverageCalculator.Visitor classesWithCoverageCollector
-    ) {
-        CoverageCalculator calculator = new CoverageCalculator();
-        List<CoverageInfo> result = new ArrayList<>();
-
-        result.add(calculator.getInfo(coverage));
-        result.add(calculator.getInfo(mergedCoverage));
-
-        calculator.setCoverageVisitor(classesWithCoverageCollector);
-        result.add(calculator.getInfo(baseCoverage));
 
         return result;
     }
