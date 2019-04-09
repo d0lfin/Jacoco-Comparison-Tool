@@ -17,13 +17,13 @@ public class ReportsGenerator {
     private final HTMLWriter writer;
     private final List<String> titles;
 
-    public ReportsGenerator(File reportDirectory, List<String> sources, List<String> titles) {
+    public ReportsGenerator(File reportDirectory, List<File> sources, List<String> titles) {
         createDirectoryIfNotExists(reportDirectory);
         this.titles = titles;
         numberOfTestSuites = titles.size();
         writer = new HTMLWriter(reportDirectory + "/index.html");
         director = new CodeDirector(
-                sources.stream().map(File::new).filter(File::exists).collect(Collectors.toList()),
+                sources,
                 reportDirectory,
                 new HTMLHighlighter()
         );

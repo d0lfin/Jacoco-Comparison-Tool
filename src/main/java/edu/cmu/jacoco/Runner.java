@@ -2,7 +2,7 @@ package edu.cmu.jacoco;
 
 import edu.cmu.jacoco.CoverageCalculator.CoverageInfo;
 import org.apache.commons.cli.ParseException;
-import org.jacoco.core.analysis.IBundleCoverage;
+import org.jacoco.core.analysis.*;
 import org.jacoco.core.data.ExecutionData;
 
 import java.io.File;
@@ -25,7 +25,7 @@ public class Runner {
         ArgumentsExtractor argumentsExtractor = new ArgumentsExtractor();
         ArgumentsExtractor.Arguments arguments = argumentsExtractor.extractArguments(args);
 
-        List<IBundleCoverage> coverages = analyze(
+        List<IBundleCoverage> coverage = analyze(
                 arguments.first.stream().map(File::new).collect(Collectors.toList()),
                 arguments.second.stream().map(File::new).collect(Collectors.toList()),
                 getClasses(arguments).stream().map(File::new).filter(File::exists).collect(Collectors.toList())
@@ -33,18 +33,30 @@ public class Runner {
 
         System.out.println("[Jacoco comparison tool] Stop analyze coverage: " + new Date().toString());
 
+        IBundleCoverage firstCoverage = coverage.get(0);
+        IBundleCoverage secondCoverage = coverage.get(1);
+        IBundleCoverage mergedCoverage = coverage.get(1);
+
+        LinesInfo firstFileInfo = getInfo(firstCoverage);
+        LinesInfo secondFileInfo = getInfo(secondCoverage);
+
         ClassesWithCoverageCollector collector = new ClassesWithCoverageCollector();
-        List<CoverageInfo> coverageInfo = calculateInfo(coverages, collector);
+        List<CoverageInfo> coverageInfo = calculateInfo(firstCoverage, secondCoverage, mergedCoverage, collector);
 
         System.out.println("[Jacoco comparison tool] Stop calculating info for report: " + new Date().toString());
 
+        List<File> sources = getSources(arguments).stream()
+                .map(File::new).filter(File::exists).collect(Collectors.toList());
+
         ReportsGenerator reportsGenerator = new ReportsGenerator(
                 new File(arguments.report),
-                getSources(arguments),
+                sources,
                 arguments.titles
         );
-        reportsGenerator.generateDiffReport(coverageInfo, collector);
-        reportsGenerator.generateClassesCoverageReports(coverages);
+//        reportsGenerator.generateDiffReport(coverageInfo, collector);
+        new NewReportGenerator(new File(arguments.report), sources).generateReport(firstFileInfo, secondFileInfo);
+
+        reportsGenerator.generateClassesCoverageReports(coverage);
 
         System.out.println("[Jacoco comparison tool] Stop: " + new Date().toString());
     }
@@ -107,7 +119,7 @@ public class Runner {
         ExecutorService executorService = newFixedThreadPool(getRuntime().availableProcessors() * 2 + 1);
         CoverageAnalyzer analyzer = new CoverageAnalyzer(classesDirectory, executorService);
         ClassNamesCollector classNamesCollector = new ClassNamesCollector();
-        ExecutionDataVisitor.StoreStrategy storeStrategy = data -> classNamesCollector.contains(data.getName());
+        ExecutionDataVisitor.StoreStrategy firstFileClasses = data -> classNamesCollector.contains(data.getName());
 
         IBundleCoverage manualCoverage = analyzer.analyze(classNamesCollector, firstFiles);
 
@@ -116,9 +128,9 @@ public class Runner {
         allFiles.addAll(secondFiles);
 
         Future<IBundleCoverage> coverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, secondFiles));
+                () -> analyzer.analyze(firstFileClasses, secondFiles));
         Future<IBundleCoverage> mergedCoverage = executorService.submit(
-                () -> analyzer.analyze(storeStrategy, allFiles));
+                () -> analyzer.analyze(firstFileClasses, allFiles));
 
         List<IBundleCoverage> result = Arrays.asList(manualCoverage, coverage.get(), mergedCoverage.get());
 
@@ -128,12 +140,60 @@ public class Runner {
     }
 
     private static List<CoverageInfo> calculateInfo(
-            List<IBundleCoverage> coverages,
-            CoverageCalculator.Visitor visitor
+            IBundleCoverage baseCoverage,
+            IBundleCoverage coverage,
+            IBundleCoverage mergedCoverage,
+            CoverageCalculator.Visitor classesWithCoverageCollector
     ) {
         CoverageCalculator calculator = new CoverageCalculator();
-        calculator.setCoverageVisitor(visitor);
-        return coverages.stream().map(calculator::getInfo).collect(Collectors.toList());
+        List<CoverageInfo> result = new ArrayList<>();
+
+        result.add(calculator.getInfo(coverage));
+        result.add(calculator.getInfo(mergedCoverage));
+
+        calculator.setCoverageVisitor(classesWithCoverageCollector);
+        result.add(calculator.getInfo(baseCoverage));
+
+        return result;
+    }
+
+    private static LinesInfo getInfo(IBundleCoverage coverage) {
+        // package ( class, (line number, status))
+        HashMap<String, HashMap<String, HashMap<Integer, Integer>>> info = new HashMap<>();
+        for (IPackageCoverage packageCoverage: coverage.getPackages()) {
+            String packageName = packageCoverage.getName().replace('/', '.');
+            HashMap<String, HashMap<Integer, Integer>> packageClasses = info.get(packageName);
+
+            for (IClassCoverage classCoverage: packageCoverage.getClasses()) {
+                int firstLineWithCoverage = classCoverage.getFirstLine();
+                if (firstLineWithCoverage == -1) {
+                    continue;
+                }
+
+                String className = classCoverage.getName();
+                HashMap<Integer, Integer> classLines = packageClasses == null ? null : packageClasses.get(className);
+
+                for (int linePosition = firstLineWithCoverage; linePosition < classCoverage.getLastLine(); linePosition++) {
+                    int status = classCoverage.getLine(linePosition).getStatus();
+                    if (status == ICounter.NOT_COVERED || status == ICounter.EMPTY) {
+                        continue;
+                    }
+
+                    if (packageClasses == null) {
+                        packageClasses = new HashMap<>();
+                        info.put(packageName, packageClasses);
+                    }
+
+                    if (classLines == null) {
+                        classLines = new HashMap<>();
+                        packageClasses.put(className, classLines);
+                    }
+
+                    classLines.put(linePosition, status);
+                }
+            }
+        }
+        return new LinesInfo(info);
     }
 
     private static class ClassNamesCollector implements ExecutionDataVisitor.StoreStrategy {
@@ -142,7 +202,7 @@ public class Runner {
 
         @Override
         public boolean shouldBeStored(ExecutionData data) {
-            classes.add(data.getName());
+            classes.add(data.getName()); // add full class path to set
             return true;
         }
 
@@ -154,5 +214,11 @@ public class Runner {
     private interface PathStoreStrategy {
 
         boolean shouldBeStored(File file);
+    }
+
+    public static class LinesInfo extends HashMap<String, HashMap<String, HashMap<Integer, Integer>>> {
+        LinesInfo(Map<? extends String, ? extends HashMap<String, HashMap<Integer, Integer>>> m) {
+            super(m);
+        }
     }
 }

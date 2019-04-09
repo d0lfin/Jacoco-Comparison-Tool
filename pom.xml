@@ -26,6 +26,11 @@
             <artifactId>commons-cli</artifactId>
             <version>20040117.000000</version>
         </dependency>
+        <dependency>
+            <groupId>com.j2html</groupId>
+            <artifactId>j2html</artifactId>
+            <version>1.4.0</version>
+        </dependency>
     </dependencies>
     <build>
         <sourceDirectory>src/main/java</sourceDirectory>
