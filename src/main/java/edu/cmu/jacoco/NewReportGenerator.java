@@ -15,8 +15,8 @@ import static j2html.TagCreator.*;
 public class NewReportGenerator {
 
     public static final String TITLE = "Coverage comparison results";
-    public static final String NOT_COVERED_COLOR = "red";
-    public static final String PARTLY_COVERED_COLOR = "yellow";
+    public static final String NOT_COVERED_COLOR = "#ff7a66";
+    public static final String PARTLY_COVERED_COLOR = "#fff785";
 
     private final List<File> sources;
     private File reportDirectory;
@@ -47,30 +47,35 @@ public class NewReportGenerator {
     }
 
     private void generateIndex(LinesInfo baseCoverage, LinesInfo coverage) throws IOException {
-        HashMap<String, HashMap<String, String>> packages = getDifference(baseCoverage, coverage);
+        HashMap<String, HashMap<String, LineInfo>> packages = getDifference(baseCoverage, coverage);
         render(createFile("index.html"), document(
-                html(
-                        head(
-                                title(TITLE)
+            html(
+                head(
+                    title(TITLE)
+                ),
+                body(
+                    h2(TITLE),
+                    table(
+                        thead(
+                            tr(
+                                td("Package"), td("Class"), td("Partly covered"), td("Not covered")
+                            )
                         ),
-                        body(
-                                h2(TITLE),
-                                each(packages.keySet(), packageName ->
-                                        div(
-                                                h3(packageName),
-                                                ul(
-                                                        each(packages.get(packageName).keySet(), className -> {
-                                                            String href = getPathToClassReport(packageName, className);
-                                                            String color = packages.get(packageName).get(className);
-                                                            return li(
-                                                                    a().withText(className).withHref(href)
-                                                            ).withStyle("background-color:" + color);
-                                                        })
-                                                )
-                                        )
-                                )
+                        tbody(
+                            each(packages.keySet(), packageName ->
+                                each(packages.get(packageName).keySet(), className -> tr(
+                                    td(packageName),
+                                    td(
+                                        a().withText(className).withHref(getPathToClassReport(packageName, className))
+                                    ),
+                                    td(packages.get(packageName).get(className).partlyCovered.toString()),
+                                    td(packages.get(packageName).get(className).notCovered.toString())
+                                ).withStyle("background-color:" + packages.get(packageName).get(className).color))
+                            )
                         )
+                    )
                 )
+            )
         ));
     }
 
@@ -160,8 +165,8 @@ public class NewReportGenerator {
         NOT_COVERED
     }
 
-    private HashMap<String, HashMap<String, String>> getDifference(LinesInfo baseCoverage, LinesInfo coverage) {
-        HashMap<String, HashMap<String, String>> packages = new HashMap<>();
+    private HashMap<String, HashMap<String, LineInfo>> getDifference(LinesInfo baseCoverage, LinesInfo coverage) {
+        HashMap<String, HashMap<String, LineInfo>> packages = new HashMap<>();
         for (String packageName : baseCoverage.keySet()) {
             for (String className : baseCoverage.get(packageName).keySet()) {
                 HashMap<Integer, Integer> baseClassCoverage = baseCoverage.get(packageName).get(className);
@@ -173,17 +178,30 @@ public class NewReportGenerator {
                         continue;
                     }
 
-                    HashMap<String, String> classes = packages.computeIfAbsent(packageName, k -> new HashMap<>());
+                    HashMap<String, LineInfo> classes = packages.computeIfAbsent(packageName, k -> new HashMap<>());
+                    LineInfo lineInfo = classes.get(className);
+                    if (lineInfo == null) {
+                        lineInfo = new LineInfo();
+                        classes.put(className, lineInfo);
+                    }
 
                     if (lineStatus == LINE_STATUS.PARTLY_COVERED) {
-                        classes.put(className, getColor(classes, className, PARTLY_COVERED_COLOR));
+                        lineInfo.partlyCovered++;
+                        lineInfo.color = getColor(lineInfo, PARTLY_COVERED_COLOR);
                     } else {
-                        classes.put(className, getColor(classes, className, NOT_COVERED_COLOR));
+                        lineInfo.notCovered++;
+                        lineInfo.color = getColor(lineInfo, NOT_COVERED_COLOR);
                     }
                 }
             }
         }
         return packages;
+    }
+
+    private static class LineInfo {
+        String color = NOT_COVERED_COLOR;
+        Integer notCovered = 0;
+        Integer partlyCovered = 0;
     }
 
     private LINE_STATUS getLineStatus(LinesInfo info, String packageName, String className, int line) {
@@ -210,13 +228,8 @@ public class NewReportGenerator {
         return LINE_STATUS.NOT_COVERED;
     }
 
-    private String getColor(HashMap<String, String> classes, String className, String newColor) {
-        String color = classes.get(className);
-        if (color == null) {
-            return newColor;
-        }
-
-        if (color.equals(PARTLY_COVERED_COLOR) || newColor.equals(PARTLY_COVERED_COLOR)) {
+    private String getColor(LineInfo lineInfo, String newColor) {
+        if (lineInfo.color.equals(PARTLY_COVERED_COLOR) || newColor.equals(PARTLY_COVERED_COLOR)) {
             return PARTLY_COVERED_COLOR;
         } else {
             return NOT_COVERED_COLOR;
