@@ -46,14 +46,8 @@ public class Runner {
         List<File> sources = getSources(arguments).stream()
                 .map(File::new).filter(File::exists).collect(Collectors.toList());
 
-        ReportsGenerator reportsGenerator = new ReportsGenerator(
-                new File(arguments.report),
-                sources,
-                arguments.titles
-        );
         new NewReportGenerator(new File(arguments.report), sources).generateReport(firstFileInfo, secondFileInfo);
 
-        reportsGenerator.generateClassesCoverageReports(coverage);
 
         System.out.println("[Jacoco comparison tool] Stop: " + new Date().toString());
     }
@@ -149,7 +143,8 @@ public class Runner {
                     continue;
                 }
 
-                String className = classCoverage.getName();
+                String[] classNameParts = classCoverage.getName().split("/");
+                String className = classNameParts[classNameParts.length - 1];
                 HashMap<Integer, Integer> classLines = packageClasses == null ? null : packageClasses.get(className);
 
                 for (int linePosition = firstLineWithCoverage; linePosition < classCoverage.getLastLine(); linePosition++) {
